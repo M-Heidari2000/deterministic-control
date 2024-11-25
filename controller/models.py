@@ -8,15 +8,46 @@ class ObservationEncoder(nn.Module):
     """
         Embeds observations into vectors
     """
-    def __init__(self, obs_dim: int, obs_embedding_dim: int):
+    def __init__(
+        self,
+        obs_dim: int,
+        hidden_dim: int,
+        obs_embedding_dim: int
+    ):
         super().__init__()
         self.mlp_layers = nn.Sequential(
-            nn.Linear(obs_dim, 2*obs_dim),
+            nn.Linear(obs_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(2*obs_dim, obs_embedding_dim),
+            nn.Linear(hidden_dim, obs_embedding_dim),
         )
 
     def forward(self, obs):
         embedded_obs = self.mlp_layers(obs)
         return embedded_obs
     
+
+class RewardModel(nn.Module):
+    """
+        p(r_t | h_t, a_t)
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dim: int
+    ):
+        super().__init__()
+        self.mlp_layers = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(self, state, action):
+        reward = self.mlp_layers(
+            torch.cat([state, action], dim=1)
+        )
+        return reward
