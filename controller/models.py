@@ -76,3 +76,25 @@ class ObservationModel(nn.Module):
     def forward(self, state):
         obs = self.mlp_layers(state)
         return obs
+    
+
+class TransitionModel(nn.Module):
+    """
+        h_{t+1} = f(h_t, a_t)
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+    ):
+        
+        self.rnn = nn.GRUCell(
+            input_size=action_dim,
+            hidden_size=state_dim,
+        )
+
+
+    def forward(self, state, action):
+        next_state = self.rnn(state, action)
+        return next_state
