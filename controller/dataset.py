@@ -2,11 +2,9 @@ import numpy as np
 
 
 class ReplayBuffer:
-
     """
         Replay buffer holds sample trajectories
     """
-    
     def __init__(
         self,
         capacity: int,
