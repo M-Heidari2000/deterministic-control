@@ -63,7 +63,7 @@ class ReplayBuffer:
         ])
 
         sampled_observations = self.observations[sampled_ranges].reshape(
-            batch_size, chunk_length, *self.observations.shape[1:]
+            batch_size, chunk_length, self.observations.shape[1]
         )
         sampled_actions = self.actions[sampled_ranges].reshape(
             batch_size, chunk_length, self.actions.shape[1]
