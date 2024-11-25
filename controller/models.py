@@ -51,3 +51,28 @@ class RewardModel(nn.Module):
             torch.cat([state, action], dim=1)
         )
         return reward
+    
+
+class ObservationModel(nn.Module):
+    """
+        p(o_t | h_t)
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        hidden_dim: int,
+        obs_dim: int,
+    ):
+        super().__init__()
+        self.mlp_layers = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, obs_dim)
+        )
+
+    def forward(self, state):
+        obs = self.mlp_layers(state)
+        return obs
