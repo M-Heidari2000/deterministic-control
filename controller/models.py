@@ -86,7 +86,10 @@ class TransitionModel(nn.Module):
         state_dim: int,
         action_dim: int,
     ):
-        super().__init__()  
+        super().__init__()
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+
         self.rnn = nn.GRUCell(
             input_size=action_dim,
             hidden_size=state_dim,
