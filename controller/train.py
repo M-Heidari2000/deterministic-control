@@ -78,8 +78,8 @@ def train(env: gym.Env, config: TrainConfig):
         list(encoder_model.parameters())
     )
 
-    action_low = torch.as_tensor(env.action_space.low, device=device).unsqueeze(0),
-    action_high = torch.as_tensor(env.action_space.high, device=device).unsqueeze(0),    
+    action_low = torch.as_tensor(env.action_space.low, device=device).unsqueeze(0)
+    action_high = torch.as_tensor(env.action_space.high, device=device).unsqueeze(0)   
 
     cem_agent = CEMAgent(
         transition_model=transition_model,
