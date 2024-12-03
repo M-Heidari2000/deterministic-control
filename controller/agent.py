@@ -40,7 +40,7 @@ class CEMAgent:
 
         # no learning takes place here
         with torch.no_grad():
-            state = self.encoder_model(obs)
+            initial_state = self.encoder_model(obs)
 
             # initialize action distribution ~ N(0, I)
             action_dist = Normal(
@@ -61,11 +61,12 @@ class CEMAgent:
                 action_candidates = action_dist.sample([self.num_candidates]).clamp(self.action_low, self.action_high)
                 action_candidates = einops.rearrange(action_candidates, "n h a -> h n a")
 
-                state = state.repeat([self.num_candidates, 1])
+                state = initial_state.repeat([self.num_candidates, 1])
                 total_predicted_reward = torch.zeros(self.num_candidates, device=self.device)
 
                 # start generating trajectories starting from s_t using transition model
                 for t in range(self.planning_horizon):
+                    print(state.shape)
                     total_predicted_reward += self.reward_model(state=state).squeeze()
                     # get next state from our prior (transition model)
                     state = self.transition_model(
