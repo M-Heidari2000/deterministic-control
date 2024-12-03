@@ -134,4 +134,4 @@ class PosteriorModel(nn.Module):
 
         state = self.state_head(rnn_hidden)
 
-        return state
+        return rnn_hidden, state
