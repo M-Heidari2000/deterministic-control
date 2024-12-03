@@ -11,7 +11,7 @@ class CEMAgent:
     def __init__(
         self,
         transition_model,
-        posterior_model,
+        encoder_model,
         reward_model,
         action_low,
         action_high,
@@ -21,7 +21,7 @@ class CEMAgent:
         num_elites: int,
     ):
         self.transition_model = transition_model
-        self.posterior_model = posterior_model
+        self.encoder_model = encoder_model
         self.reward_model = reward_model
         self.action_low = action_low
         self.action_high = action_high
@@ -30,28 +30,17 @@ class CEMAgent:
         self.num_elites = num_elites
         self.planning_horizon = planning_horizon
 
-        self.device = next(posterior_model.parameters()).device
+        self.device = next(encoder_model.parameters()).device
 
-        # initialize rnn hidden to zero vector
-        self.rnn_hidden = torch.zeros(1, self.posterior_model.rnn_hidden_dim, device=self.device)
-
-    def __call__(self, obs, prev_action=None):
+    def __call__(self, obs):
 
         # convert o_t and a_{t-1} to a torch tensor and add a batch dimension
         obs = torch.as_tensor(obs, device=self.device).unsqueeze(0)
-        if prev_action is not None:
-            prev_action = torch.as_tensor(prev_action, device=self.device).unsqueeze(0)
-        else:
-            prev_action = torch.zeros(self.posterior_model.action_dim, device=self.device).unsqueeze(0)
+
 
         # no learning takes place here
         with torch.no_grad():
-            # infer s_t = g(s_t | o1:t, a1:t-1)
-            self.rnn_hidden, state = self.posterior_model(
-                prev_rnn_hidden=self.rnn_hidden,
-                prev_action=prev_action,
-                observation=obs,
-            )
+            state = self.encoder_model(obs)
 
             # initialize action distribution ~ N(0, I)
             action_dist = Normal(
