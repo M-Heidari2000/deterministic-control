@@ -87,6 +87,3 @@ class CEMAgent:
             action = mean[0]
 
         return action.cpu().numpy()
-    
-    def reset(self):
-        self.rnn_hidden = torch.zeros(1, self.posterior_model.rnn_hidden_dim, device=self.device)

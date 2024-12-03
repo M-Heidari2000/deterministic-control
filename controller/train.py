@@ -114,7 +114,6 @@ def train(env: gym.Env, config: TrainConfig):
         obs, _ = env.reset()
         done = False
         total_reward = 0
-        cem_agent.reset()
         while not done:
             action = cem_agent(obs=obs)
             action += np.random.normal(
@@ -205,7 +204,6 @@ def train(env: gym.Env, config: TrainConfig):
             obs, _ = env.reset()
             done = False
             total_reward = 0
-            cem_agent.reset()
             while not done:
                 action = cem_agent(obs=obs)
                 next_obs, reward, terminated, truncated, _ = env.step(action)
