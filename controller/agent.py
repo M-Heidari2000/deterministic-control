@@ -66,7 +66,6 @@ class CEMAgent:
 
                 # start generating trajectories starting from s_t using transition model
                 for t in range(self.planning_horizon):
-                    print(state.shape)
                     total_predicted_reward += self.reward_model(state=state).squeeze()
                     # get next state from our prior (transition model)
                     state = self.transition_model(
