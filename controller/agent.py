@@ -45,11 +45,11 @@ class CEMAgent:
             # initialize action distribution ~ N(0, I)
             action_dist = Normal(
                 0.5 * (self.action_high + self.action_low) + torch.zeros(
-                    (self.planning_horizon, self.posterior_model.action_dim),
+                    (self.planning_horizon, self.action_low.shape[1]),
                     device=self.device
                 ),
                 0.2 * (self.action_high - self.action_low) * torch.ones(
-                    (self.planning_horizon, self.posterior_model.action_dim),
+                    (self.planning_horizon, self.action_low.shape[1]),
                     device=self.device
                 ),
             )
