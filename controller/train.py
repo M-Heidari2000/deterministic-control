@@ -76,17 +76,13 @@ def train(env: gym.Env, config: TrainConfig):
         list(reward_model.parameters()) +
         list(transition_model.parameters()) +
         list(encoder_model.parameters())
-    )
-
-    action_low = torch.as_tensor(env.action_space.low, device=device).unsqueeze(0)
-    action_high = torch.as_tensor(env.action_space.high, device=device).unsqueeze(0)   
+    )  
 
     cem_agent = CEMAgent(
+        env,
         transition_model=transition_model,
         encoder_model=encoder_model,
         reward_model=reward_model,
-        action_low=action_low,
-        action_high=action_high,
         planning_horizon=config.planning_horizon,
         num_iterations=config.num_iterations,
         num_candidates=config.num_candidates,

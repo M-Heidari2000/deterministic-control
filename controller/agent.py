@@ -10,11 +10,10 @@ class CEMAgent:
 
     def __init__(
         self,
+        env,
         transition_model,
         encoder_model,
         reward_model,
-        action_low,
-        action_high,
         planning_horizon: int,
         num_iterations: int,
         num_candidates: int,
@@ -23,14 +22,14 @@ class CEMAgent:
         self.transition_model = transition_model
         self.encoder_model = encoder_model
         self.reward_model = reward_model
-        self.action_low = action_low
-        self.action_high = action_high
         self.num_iterations = num_iterations
         self.num_candidates = num_candidates
         self.num_elites = num_elites
         self.planning_horizon = planning_horizon
 
         self.device = next(encoder_model.parameters()).device
+        self.action_low = torch.as_tensor(env.action_space.low, device=self.device).unsqueeze(0)
+        self.action_high = torch.as_tensor(env.action_space.high, device=self.device).unsqueeze(0) 
 
     def __call__(self, obs):
 
