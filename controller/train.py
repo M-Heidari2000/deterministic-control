@@ -19,7 +19,7 @@ from .models import (
     ObservationModel,
     RewardModel,
     TransitionModel,
-    PosteriorModel,
+    EncoderModel,
 )
 
 
@@ -66,19 +66,16 @@ def train(env: gym.Env, config: TrainConfig):
         action_dim=env.action_space.shape[0],
     ).to(device)
 
-    posterior_model = PosteriorModel(
+    encoder_model = EncoderModel(
         observation_dim=env.observation_space.shape[0],
-        action_dim=env.action_space.shape[0],
         state_dim=config.state_dim,
-        rnn_hidden_dim=config.rnn_hidden_dim,
-        rnn_input_dim=config.rnn_input_dim,
     ).to(device)
 
     all_params = (
         list(observation_model.parameters()) +
         list(reward_model.parameters()) +
         list(transition_model.parameters()) +
-        list(posterior_model.parameters())
+        list(encoder_model.parameters())
     )
 
     action_low = torch.as_tensor(env.action_space.low, device=device).unsqueeze(0),
@@ -86,7 +83,7 @@ def train(env: gym.Env, config: TrainConfig):
 
     cem_agent = CEMAgent(
         transition_model=transition_model,
-        posterior_model=posterior_model,
+        encoder_model=encoder_model,
         reward_model=reward_model,
         action_low=action_low,
         action_high=action_high,
@@ -118,9 +115,8 @@ def train(env: gym.Env, config: TrainConfig):
         done = False
         total_reward = 0
         cem_agent.reset()
-        prev_action = None
         while not done:
-            action = cem_agent(obs=obs, prev_action=prev_action)
+            action = cem_agent(obs=obs)
             action += np.random.normal(
                 0,
                 np.sqrt(config.action_noise_var),
@@ -131,7 +127,6 @@ def train(env: gym.Env, config: TrainConfig):
             done = terminated or truncated
             replay_buffer.push(obs, action, reward, done)
             obs = next_obs
-            prev_action = action
 
         writer.add_scalar('total reward at train', total_reward, episode)
         print('episode [%4d/%4d] is collected. Total reward is %f' %
@@ -154,82 +149,52 @@ def train(env: gym.Env, config: TrainConfig):
             rewards = einops.rearrange(rewards, 'b l r -> l b r')
             
             # prepare Tensor to maintain states sequence and rnn hidden sequence
-            state_posteriors = torch.zeros(
+            states = torch.zeros(
                 (config.chunk_length, config.batch_size, config.state_dim),
                 device=device
             )
-            rnn_hiddens = torch.zeros(
-                (config.chunk_length, config.batch_size, config.rnn_hidden_dim),
-                device=device
-            )
 
-            total_alignment_loss = 0
+            state = encoder_model(observations[0])
+            states[0] = state
 
-            # first step is a bit different from the others
-            rnn_hidden, state_posterior = posterior_model(
-                prev_rnn_hidden=torch.zeros(config.batch_size, config.rnn_hidden_dim, device=device),
-                prev_action=torch.zeros(config.batch_size, env.action_space.shape[0], device=device),
-                observation=observations[0],
-            )
+            for t in range(0, config.chunk_length-1):
+                state = transition_model(state, actions[t])
 
-            rnn_hiddens[0] = rnn_hidden
-            state_posteriors[0] = state_posterior
-
-            for t in range(1, config.chunk_length):
-                rnn_hidden, state_posterior = posterior_model(
-                    prev_rnn_hidden=rnn_hidden,
-                    prev_action=actions[t-1],
-                    observation=observations[t],
-                )
-                state_prior = transition_model(
-                    prev_state=posterior_sample,
-                    prev_action=actions[t-1],
-                )
-
-                kl_loss = kl_divergence(state_posterior, state_prior).sum(dim=1)
-                total_kl_loss += kl_loss.clamp(min=config.free_nats).mean()
-
-                posterior_sample = state_posterior.rsample()
-
-                rnn_hiddens[t] = rnn_hidden
-                posterior_samples[t] = posterior_sample
-
-            flatten_posterior_samples = posterior_samples.reshape(-1, config.state_dim)
+            flatten_states = states.reshape(-1, config.state_dim)
             
             recon_observations = observation_model(
-                flatten_posterior_samples,
+                flatten_states,
             ).reshape(config.chunk_length, config.batch_size, env.observation_space.shape[0])
 
             recon_rewards = reward_model(
-                flatten_posterior_samples,
+                flatten_states,
             ).reshape(config.chunk_length, config.batch_size, 1)
 
             obs_loss = 0.5 * mse_loss(
-                recon_observations,
-                observations,
+                recon_observations[1:],
+                observations[1:],
                 reduction='none'
             ).mean([0, 1]).sum()
 
             reward_loss = 0.5 * mse_loss(
-                recon_rewards,
-                rewards,
+                recon_rewards[1:],
+                rewards[1:],
                 reduction='none'
             ).mean([0, 1]).sum()
 
-            loss = config.kl_beta * total_kl_loss + obs_loss + reward_loss
+            loss = obs_loss + reward_loss
             optimizer.zero_grad()
             loss.backward()
             clip_grad_norm_(all_params, config.clip_grad_norm)
             optimizer.step()
 
             # print losses and add tensorboard
-            print('update_step: %3d loss: %.5f, kl_loss: %.5f, obs_loss: %.5f, reward_loss: %.5f'
+            print('update_step: %3d loss: %.5f, obs_loss: %.5f, reward_loss: %.5f'
                   % (update_step+1,
-                     loss.item(), total_kl_loss.item(), obs_loss.item(), reward_loss.item()))
+                     loss.item(), obs_loss.item(), reward_loss.item()))
             
             total_update_step = episode * config.collect_interval + update_step
             writer.add_scalar('overall loss', loss.item(), total_update_step)
-            writer.add_scalar('kl loss', total_kl_loss.item(), total_update_step)
             writer.add_scalar('obs loss', obs_loss.item(), total_update_step)
             writer.add_scalar('reward loss', reward_loss.item(), total_update_step)
         
@@ -241,13 +206,11 @@ def train(env: gym.Env, config: TrainConfig):
             done = False
             total_reward = 0
             cem_agent.reset()
-            prev_action = None
             while not done:
-                action = cem_agent(obs=obs, prev_action=prev_action)
+                action = cem_agent(obs=obs)
                 next_obs, reward, terminated, truncated, _ = env.step(action)
                 total_reward += reward
                 obs = next_obs
-                prev_action = action
                 done = terminated or truncated
 
             writer.add_scalar('total reward at test', total_reward, episode)
@@ -259,7 +222,7 @@ def train(env: gym.Env, config: TrainConfig):
     torch.save(observation_model.state_dict(), log_dir / "obs_model.pth")
     torch.save(reward_model.state_dict(), log_dir / "reward_model.pth")
     torch.save(transition_model.state_dict(), log_dir / "transition_model.pth")
-    torch.save(posterior_model.state_dict(), log_dir / "posterior_model.pth")
+    torch.save(encoder_model.state_dict(), log_dir / "encoder_model.pth")
     writer.close()
     
     return {"model_dir": log_dir}   
