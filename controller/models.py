@@ -97,7 +97,7 @@ class EncoderModel(nn.Module):
         self,
         observation_dim: int,
         state_dim: int,
-        hidden_dim: int,
+        hidden_dim: Optional[int]=None,
     ):
         super().__init__()
 
