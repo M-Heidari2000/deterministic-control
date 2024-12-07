@@ -8,8 +8,8 @@ class TrainConfig:
     test_interval: int = 10
     action_repeat: int = 1
     state_dim: int = 30
-    rnn_hidden_dim: int = 200
-    rnn_input_dim: int = 200
+    rnn_hidden_dim: int = 120
+    rnn_input_dim: int = 120
     buffer_capacity: int = 1000000
     all_episodes: int = 1000
     seed_episodes: int = 5

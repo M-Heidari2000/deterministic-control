@@ -39,8 +39,8 @@ class CEMAgent:
 
             # initialize action distribution ~ N(0, I)
             action_dist = Normal(
-                    torch.zeros((self.planning_horizon, self.action_low.shape[1]), device=self.device),
-                    torch.ones((self.planning_horizon, self.action_low.shape[1]), device=self.device),
+                    torch.zeros((self.planning_horizon, self.transition_model.action_dim), device=self.device),
+                    torch.ones((self.planning_horizon, self.transition_model.action_dim), device=self.device),
             )
 
             # iteratively improve action distribution with CEM

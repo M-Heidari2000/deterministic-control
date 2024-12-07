@@ -69,6 +69,9 @@ class TransitionModel(nn.Module):
     ):
         super().__init__()
 
+        self.action_dim = action_dim
+        self.state_dim = state_dim
+
         hidden_dim = (
             hidden_dim if hidden_dim is not None else 2*(state_dim + action_dim)
         )
