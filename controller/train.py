@@ -7,7 +7,6 @@ import numpy as np
 import gymnasium as gym
 from pathlib import Path
 from datetime import datetime
-from torch.distributions.kl import kl_divergence
 from torch.nn.functional import mse_loss
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -79,7 +78,6 @@ def train(env: gym.Env, config: TrainConfig):
     )  
 
     cem_agent = CEMAgent(
-        env,
         transition_model=transition_model,
         encoder_model=encoder_model,
         reward_model=reward_model,
